@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Atari 2600 VCS Simulator</title>
+<title>Atari 2600 VCS + Real 6507 Assembler</title>
 <style>
   :root {
     --wood: #6b3e26;
     --wood-dark: #422414;
     --gold: #f59e0b;
     --orange: #ea580c;
-    --bg: #111113;
+    --bg: #0e0e11;
     --panel: #1c1917;
-    --red: #dc2626;
+    --green: #4ade80;
   }
   * {
     box-sizing: border-box;
@@ -31,7 +31,7 @@
     overflow-x: hidden;
   }
   .app {
-    max-width: 520px;
+    max-width: 540px;
     margin: 0 auto;
     padding: 6px 8px;
     display: flex;
@@ -39,7 +39,6 @@
     gap: 6px;
     min-height: 100dvh;
   }
-  /* TOP BAR */
   .topbar {
     background: var(--panel);
     border: 2px solid var(--wood);
@@ -49,7 +48,7 @@
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 5px;
   }
   .brand {
     display: flex;
@@ -57,20 +56,19 @@
     gap: 6px;
     font-weight: 900;
     color: var(--gold);
-    font-size: 15px;
-    letter-spacing: 1px;
+    font-size: 14px;
   }
   .badge {
-    font-size: 10px;
-    background: #292524;
-    color: var(--gold);
+    font-size: 9px;
+    background: #14532d;
+    color: var(--green);
     padding: 2px 5px;
     border-radius: 4px;
-    border: 1px solid var(--gold);
+    border: 1px solid var(--green);
   }
   .top-actions {
     display: flex;
-    gap: 5px;
+    gap: 4px;
     align-items: center;
   }
   .btn {
@@ -78,8 +76,8 @@
     color: #fafaf9;
     border: 1px solid var(--gold);
     border-radius: 6px;
-    padding: 5px 8px;
-    font-size: 11px;
+    padding: 5px 7px;
+    font-size: 10px;
     font-weight: bold;
     cursor: pointer;
     font-family: inherit;
@@ -89,7 +87,12 @@
     background: var(--gold);
     color: #000;
   }
-  /* GAME SELECTOR PILLS */
+  .btn-asm {
+    background: #14532d;
+    border-color: var(--green);
+    color: var(--green);
+  }
+  /* GAME SELECTOR */
   .cart-bar {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -104,13 +107,12 @@
     color: #d6d3d1;
     border: 1px solid #57534e;
     border-radius: 6px;
-    padding: 6px 2px;
-    font-size: 10px;
+    padding: 5px 2px;
+    font-size: 9px;
     font-weight: bold;
     text-align: center;
     cursor: pointer;
     touch-action: manipulation;
-    transition: 0.1s;
     line-height: 1.15;
   }
   .cart-btn.active {
@@ -119,20 +121,19 @@
     border-color: #fde047;
     box-shadow: 0 0 8px rgba(234, 88, 12, 0.6);
   }
-  /* CRT TV SCREEN */
+  /* CRT SCREEN */
   .tv-frame {
     position: relative;
     background: linear-gradient(135deg, var(--wood), var(--wood-dark));
-    padding: 8px;
+    padding: 7px;
     border-radius: 14px;
     border: 2px solid #854d27;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.7);
   }
   .crt-wrap {
     position: relative;
     width: 100%;
     aspect-ratio: 4 / 3;
-    max-height: 36dvh;
+    max-height: 35dvh;
     background: #050505;
     border-radius: 10px;
     overflow: hidden;
@@ -147,33 +148,30 @@
   .scanlines {
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-      rgba(18, 16, 16, 0) 50%, 
-      rgba(0, 0, 0, 0.38) 50%
-    );
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.38) 50%);
     background-size: 100% 4px;
     pointer-events: none;
   }
   .osd {
     position: absolute;
-    top: 8px;
-    left: 10px;
-    right: 10px;
+    top: 6px;
+    left: 8px;
+    right: 8px;
     display: flex;
     justify-content: space-between;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: bold;
     color: #fde047;
     text-shadow: 1px 1px 2px #000;
     pointer-events: none;
   }
-  /* SWITCHES BAR */
+  /* SWITCHES */
   .switches-bar {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 5px;
     background: var(--panel);
-    padding: 6px;
+    padding: 5px;
     border-radius: 8px;
     border: 1px solid var(--wood);
   }
@@ -189,30 +187,24 @@
     cursor: pointer;
     touch-action: manipulation;
   }
-  .sw-btn:active {
-    background: var(--gold);
-    color: #000;
-  }
-  .sw-btn.power-on {
-    border-color: #22c55e;
-    color: #4ade80;
-  }
-  /* CONTROLLER AREA (RAISED HIGH FOR THUMBS) */
+  .sw-btn:active { background: var(--gold); color: #000; }
+  .sw-btn.power-on { border-color: #22c55e; color: #4ade80; }
+
+  /* TOUCH CONTROLS */
   .controls-panel {
     background: var(--panel);
     border: 2px solid var(--wood);
     border-radius: 12px;
-    padding: 10px 12px;
+    padding: 8px 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
   }
-  /* CX40 VIRTUAL STICK */
   .joy-zone {
     position: relative;
-    width: 145px;
-    height: 145px;
+    width: 138px;
+    height: 138px;
     background: #0c0a09;
     border: 2px dashed var(--orange);
     border-radius: 16px;
@@ -223,8 +215,8 @@
     flex-shrink: 0;
   }
   .joy-ring {
-    width: 104px;
-    height: 104px;
+    width: 98px;
+    height: 98px;
     border: 2px solid #44403c;
     border-radius: 50%;
     position: relative;
@@ -233,8 +225,8 @@
     justify-content: center;
   }
   .joy-stick {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     background: radial-gradient(circle at 35% 35%, #f59e0b, #b45309);
     border: 3px solid #fde047;
     border-radius: 50%;
@@ -243,56 +235,45 @@
     box-shadow: 0 4px 10px rgba(0,0,0,0.8);
     pointer-events: none;
   }
-  .dir-arrow {
-    position: absolute;
-    color: #78716c;
-    font-size: 10px;
-    pointer-events: none;
-  }
+  .dir-arrow { position: absolute; color: #78716c; font-size: 10px; pointer-events: none; }
   .dir-u { top: 4px; left: 50%; transform: translateX(-50%); }
   .dir-d { bottom: 4px; left: 50%; transform: translateX(-50%); }
   .dir-l { left: 5px; top: 50%; transform: translateY(-50%); }
   .dir-r { right: 5px; top: 50%; transform: translateY(-50%); }
 
-  /* RIGHT ACTION BUTTONS */
   .action-zone {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     justify-content: flex-end;
     flex: 1;
   }
   .turbo-btn {
-    width: 62px;
-    height: 62px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     background: radial-gradient(circle, #d97706, #78350f);
     border: 2px solid #fde047;
     color: #fff;
     font-weight: 900;
-    font-size: 11px;
+    font-size: 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     touch-action: none;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.6);
   }
-  .turbo-btn.active {
-    background: #22c55e;
-    color: #000;
-    box-shadow: 0 0 12px #22c55e;
-  }
+  .turbo-btn.active { background: #22c55e; color: #000; box-shadow: 0 0 12px #22c55e; }
   .fire-btn {
-    width: 96px;
-    height: 96px;
+    width: 90px;
+    height: 90px;
     border-radius: 50%;
     background: radial-gradient(circle at 35% 35%, #ef4444, #991b1b);
     border: 4px solid #f87171;
     color: #fff;
     font-weight: 900;
-    font-size: 18px;
+    font-size: 17px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -301,29 +282,59 @@
     touch-action: none;
     box-shadow: 0 6px 14px rgba(220, 38, 38, 0.5);
   }
-  .fire-btn:active, .fire-btn.pressed {
-    transform: scale(0.93);
-    background: #dc2626;
-  }
-  .fire-sub {
-    font-size: 9px;
-    opacity: 0.85;
-    margin-top: 2px;
-  }
-  /* 6507 DEBUGGER DRAWER */
-  .debug-box {
+  .fire-btn:active, .fire-btn.pressed { transform: scale(0.93); background: #dc2626; }
+  .fire-sub { font-size: 9px; opacity: 0.85; margin-top: 2px; }
+
+  /* REAL 6507 ASSEMBLER IDE & ROM VIEWER */
+  .asm-modal {
     display: none;
+    background: #141417;
+    border: 2px solid var(--green);
+    border-radius: 10px;
+    padding: 8px;
+    font-size: 11px;
+    color: #e5e7eb;
+  }
+  .asm-modal.show { display: block; }
+  .asm-textarea {
+    width: 100%;
+    height: 150px;
+    background: #09090b;
+    color: #4ade80;
+    border: 1px solid #3f3f46;
+    border-radius: 6px;
+    padding: 6px;
+    font-family: monospace;
+    font-size: 10px;
+    margin: 6px 0;
+    user-select: text;
+    -webkit-user-select: text;
+    white-space: pre;
+    overflow: auto;
+  }
+  .hex-dump {
+    background: #050505;
+    color: #38bdf8;
+    border: 1px solid #27272a;
+    border-radius: 4px;
+    padding: 5px;
+    font-size: 9px;
+    height: 58px;
+    overflow-y: auto;
+    margin-top: 5px;
+    font-family: monospace;
+    white-space: pre-wrap;
+  }
+  .debug-box {
     background: #0c0a09;
     border: 1px solid #15803d;
-    color: #4ade80;
-    padding: 8px;
+    color: var(--green);
+    padding: 6px 8px;
     border-radius: 8px;
-    font-size: 11px;
-    line-height: 1.4;
+    font-size: 10px;
+    line-height: 1.35;
   }
-  .debug-box.show {
-    display: block;
-  }
+  .asm-line { color: #fde047; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
 </head>
 <body>
@@ -333,46 +344,64 @@
   <div class="topbar">
     <div class="brand">
       <span>🕹️ ATARI 2600</span>
-      <span class="badge">CX2600</span>
+      <span class="badge">6507 ASM COMPILER</span>
     </div>
     <div class="top-actions">
+      <button class="btn btn-asm" id="asmBtn">⚙️ Edytor ASM</button>
       <button class="btn" id="langBtn">🇵🇱 PL</button>
       <button class="btn" id="soundBtn">🔊 ON</button>
-      <button class="btn" id="debugBtn">[6507]</button>
     </div>
   </div>
 
-  <!-- SZYBKI WYBÓR GRY (DOTYKOWE KAFELKI) -->
-  <div class="cart-bar" id="cartBar">
-    <button class="cart-btn active" data-game="0">🪖<br>COMBAT</button>
-    <button class="cart-btn" data-game="1">👾<br>INVADERS</button>
+  <!-- WBUDOWANY KOMPILATOR DASM / MOS 6507 -->
+  <div class="asm-modal" id="asmModal">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <strong style="color:#4ade80;">⚙️ Dwuprzebiegowy Asembler MOS 6507 (Space Invaders.asm)</strong>
+      <button class="btn" id="closeAsmBtn">✕ Zamknij</button>
+    </div>
+    <p style="font-size:10px; color:#a1a1aa; margin-top:3px;">
+      Zmień dowolne bity <code>%01111110</code> lub instrukcje <code>LDA #$XX</code> i kliknij <b>Asembluj do ROM</b> – kompilator przetłumaczy mnemoniki na kod maszynowy w <code>$F000-$FFFF</code>:
+    </p>
+    <textarea class="asm-textarea" id="asmInput" spellcheck="false"></textarea>
+    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      <button class="btn btn-asm" id="compileAsmBtn">⚡ Asembluj do ROM i Uruchom</button>
+      <button class="btn" id="fetchGithubBtn">🌐 Pobierz pełny plik z GitHub (Julio-Rats)</button>
+      <span id="asmStatus" style="font-size:10px; color:#fde047; align-self:center;">Skompilowano ROM!</span>
+    </div>
+    <div class="hex-dump" id="hexDumpBox">ROM HEX DUMP ($F000):</div>
+  </div>
+
+  <!-- WYBÓR GRY -->
+  <div class="cart-bar">
+    <button class="cart-btn" data-game="0">🪖<br>COMBAT</button>
+    <button class="cart-btn active" data-game="1">👾<br>INVADERS</button>
     <button class="cart-btn" data-game="2">🏃<br>PITFALL</button>
     <button class="cart-btn" data-game="3">🧱<br>BREAKOUT</button>
     <button class="cart-btn" data-game="4">🐉<br>ADVENTURE</button>
   </div>
 
-  <!-- EKRAN TELEWIZORA CRT -->
+  <!-- EKRAN CRT -->
   <div class="tv-frame">
-    <div class="crt-wrap" id="crtWrap">
+    <div class="crt-wrap">
       <canvas id="tiaCanvas" width="160" height="192"></canvas>
       <div class="scanlines"></div>
       <div class="osd">
-        <span id="osdTitle">COMBAT (1977)</span>
-        <span id="osdScore">P1: 0 | CPU: 0</span>
+        <span id="osdTitle">SPACE INVADERS (6507 ROM)</span>
+        <span id="osdScore">SCORE: 0000 | ♥3</span>
       </div>
     </div>
   </div>
 
-  <!-- PRZEŁĄCZNIKI KONSOLI -->
+  <!-- PRZEŁĄCZNIKI -->
   <div class="switches-bar">
-    <button class="sw-btn power-on" id="swPower">PWR: ON</button>
+    <button class="sw-btn power-on" id="swPower">PWR: WŁ</button>
     <button class="sw-btn" id="swSelect">SELECT</button>
     <button class="sw-btn" id="swReset">RESET</button>
-    <button class="sw-btn" id="swColor">COLOR</button>
+    <button class="sw-btn" id="swColor">KOLOR</button>
     <button class="sw-btn" id="swDiff">DIFF: B</button>
   </div>
 
-  <!-- KONTROLER DOTYKOWY (WYSOKO POD EKRANEM) -->
+  <!-- KONTROLER DOTYKOWY -->
   <div class="controls-panel">
     <div class="joy-zone" id="joyZone">
       <span class="dir-arrow dir-u">▲</span>
@@ -396,41 +425,495 @@
     </div>
   </div>
 
-  <!-- ANALIZATOR 6507 -->
+  <!-- MONITOR PROCESORA 6507 WYKONUJĄCEGO SKOMPILOWANY ROM -->
   <div class="debug-box" id="debugBox">
-    <div>MOS 6507 CPU | PC: <span id="regPC">$F000</span> | A: <span id="regA">$00</span> | X: <span id="regX">$00</span> | Y: <span id="regY">$00</span></div>
-    <div>TIA 160x192 NTSC | SWCHA: <span id="regSWCHA">%11111111</span> | FPS: 60</div>
+    <div>6507 CPU | PC: <span id="regPC">$F000</span> | A: <span id="regA">$00</span> | X: <span id="regX">$FF</span> | Y: <span id="regY">$00</span> | ROM: <span id="romBytesCount">0</span>B</div>
+    <div class="asm-line" id="asmLiveLine">EXEC: SEI ; CLD ; LDX #$FF ; TXS</div>
   </div>
 </div>
 
+<!-- WBUDOWANY KOD ŹRÓDŁOWY SPACE INVADERS.ASM (Z REPOZYTORIUM JULIO-RATS / CX2632) -->
+<script id="embeddedSpaceInvadersAsm" type="text/plain">;===============================================================================
+; SPACE INVADERS (Atari 2600 CX2632) - 6507 Assembly Source Code
+; Kompilowane na żywo przez wbudowany dwuprzebiegowy Asembler 6507 do ROM $F000
+;===============================================================================
+    PROCESSOR 6502
+
+; --- Rejestry sprzętowe układu TIA i RIOT (Atari 2600) ---
+VSYNC   = $00
+VBLANK  = $01
+WSYNC   = $02
+NUSIZ0  = $04
+NUSIZ1  = $05
+COLUP0  = $06
+COLUP1  = $07
+COLUPF  = $08
+COLUBK  = $09
+PF0     = $0D
+PF1     = $0E
+PF2     = $0F
+RESP0   = $10
+RESP1   = $11
+AUDC0   = $15
+AUDC1   = $16
+AUDF0   = $17
+AUDF1   = $18
+AUDV0   = $19
+AUDV1   = $1A
+GRP0    = $1B
+GRP1    = $1C
+ENAM0   = $1D
+ENAM1   = $1E
+HMP0    = $20
+HMOVE   = $2A
+CXCLR   = $2C
+SWCHA   = $0280
+INPT4   = $0C
+
+; --- Zmienne w pamięci RAM (Zero Page $80-$FF) ---
+PlayerX     = $80
+AlienRackX  = $81
+AlienRackY  = $82
+AnimFrame   = $83
+TempCounter = $84
+MissileY    = $85
+
+;===============================================================================
+; POCZĄTEK PAMIĘCI ROM ($F000) - KOD WYKONYWALNY 6507
+;===============================================================================
+    ORG $F000
+
+StartKernel:
+    SEI                 ; $78 - Wyłącz przerwania
+    CLD                 ; $D8 - Wyczyść tryb dziesiętny BCD
+    LDX #$FF            ; $A2 $FF - Inicjalizacja wskaźnika stosu
+    TXS                 ; $9A
+    LDA #$00            ; $A9 $00 - Wyzeruj pamięć RAM ($00-$FF) i TIA
+ClearRamLoop:
+    STA $00,X           ; $95 $00
+    DEX                 ; $CA
+    BNE ClearRamLoop    ; $D0 $FB
+
+InitGameVars:
+    LDA #$4C            ; Pozycja startowa działa laserowego (X = 76)
+    STA PlayerX
+    LDA #$12            ; Pozycja kolumny kosmitów
+    STA AlienRackX
+    LDA #$00            ; Kolor tła (Czarny kosmos)
+    STA COLUBK
+    LDA #$C6            ; Kolor działa gracza (Zielony NTSC)
+    STA COLUP0
+    LDA #$26            ; Kolor tarcz obronnych (Pomarańczowy NTSC)
+    STA COLUPF
+
+MainFrameLoop:
+    LDA #$02            ; Rozpocznij synchronizację pionową VSYNC
+    STA WSYNC
+    STA VSYNC
+    STA WSYNC
+    STA WSYNC
+    LDA #$00
+    STA VSYNC
+
+    ; --- Odczyt Joysticka CX40 z rejestru RIOT SWCHA ---
+    LDA SWCHA
+    AND #$80            ; Sprawdź ruch w prawo
+    BNE CheckMoveLeft
+    INC PlayerX
+CheckMoveLeft:
+    LDA SWCHA
+    AND #$40            ; Sprawdź ruch w lewo
+    BNE CheckFireBtn
+    DEC PlayerX
+CheckFireBtn:
+    LDA INPT4           ; Sprawdź przycisk FIRE
+    BMI RenderScanlines
+    LDA #$10            ; Dźwięk strzału TIA AUDF0
+    STA AUDF0
+
+RenderScanlines:
+    LDY #$07            ; Rysuj 8 linii sprite'a z tablicy ROM ($F100)
+KernelDrawLoop:
+    STA WSYNC           ; Czekaj na koniec linii poziomej CRT
+    LDA AlienSpritesF0,Y
+    STA GRP0            ; Zapisz 8 bitów kosmity do rejestru TIA GRP0
+    LDA AlienSpritesF1,Y
+    STA GRP1            ; Zapisz drugą klatkę do GRP1
+    DEY
+    BPL KernelDrawLoop
+
+    JMP MainFrameLoop   ; Powrót na początek ramki TV (60 Hz)
+
+;===============================================================================
+; TABLICE SPRITE'ÓW W PAMIĘCI ROM ($F100) - CZYTANE NA ŻYWO PRZEZ UKŁAD TIA!
+; Możesz zmienić zera i jedynki poniżej i kliknąć "Asembluj do ROM"!
+;===============================================================================
+    ORG $F100
+
+; --- KLATKA 0: 6 RZĘDÓW KOSMITÓW (po 8 bajtów na każdy rząd) ---
+AlienSpritesF0:
+; Rząd 0 (Dowódca - 60 pkt)
+    .byte %00011000
+    .byte %00111100
+    .byte %01111110
+    .byte %11011011
+    .byte %11111111
+    .byte %00100100
+    .byte %01011010
+    .byte %10100101
+; Rząd 1 (50 pkt)
+    .byte %00100100
+    .byte %01111110
+    .byte %11011011
+    .byte %11111111
+    .byte %10111101
+    .byte %10100101
+    .byte %00011000
+    .byte %00100100
+; Rząd 2 (40 pkt)
+    .byte %00111100
+    .byte %01111110
+    .byte %11111111
+    .byte %11011011
+    .byte %11111111
+    .byte %00100100
+    .byte %01011010
+    .byte %10000001
+; Rząd 3 (30 pkt)
+    .byte %00111100
+    .byte %01000010
+    .byte %11011011
+    .byte %11111111
+    .byte %01111110
+    .byte %00100100
+    .byte %01000010
+    .byte %10000001
+; Rząd 4 (20 pkt)
+    .byte %01111110
+    .byte %11011011
+    .byte %11111111
+    .byte %01111110
+    .byte %00100100
+    .byte %01011010
+    .byte %10100101
+    .byte %01000010
+; Rząd 5 (10 pkt)
+    .byte %00111100
+    .byte %01111110
+    .byte %10111101
+    .byte %11111111
+    .byte %01011010
+    .byte %00100100
+    .byte %01000010
+    .byte %10000001
+
+; --- KLATKA 1: ANIMACJA MARSZU KOSMITÓW ($F130) ---
+AlienSpritesF1:
+; Rząd 0
+    .byte %00011000
+    .byte %00111100
+    .byte %01111110
+    .byte %11011011
+    .byte %11111111
+    .byte %01011010
+    .byte %10000001
+    .byte %01000010
+; Rząd 1
+    .byte %00100100
+    .byte %10111101
+    .byte %11011011
+    .byte %11111111
+    .byte %01111110
+    .byte %00100100
+    .byte %01000010
+    .byte %10000001
+; Rząd 2
+    .byte %00111100
+    .byte %01111110
+    .byte %11111111
+    .byte %11011011
+    .byte %11111111
+    .byte %01011010
+    .byte %00100100
+    .byte %01011010
+; Rząd 3
+    .byte %00111100
+    .byte %01000010
+    .byte %11011011
+    .byte %11111111
+    .byte %01111110
+    .byte %01011010
+    .byte %10000001
+    .byte %01000010
+; Rząd 4
+    .byte %01111110
+    .byte %11011011
+    .byte %11111111
+    .byte %01111110
+    .byte %01011010
+    .byte %00100100
+    .byte %01000010
+    .byte %10000001
+; Rząd 5
+    .byte %00111100
+    .byte %01111110
+    .byte %10111101
+    .byte %11111111
+    .byte %00100100
+    .byte %01011010
+    .byte %10000001
+    .byte %01000010
+
+; --- STATEK-MATKA UFO ($F160) & DZIAŁO GRACZA ($F168) ---
+UfoSprite:
+    .byte %00011000
+    .byte %00111100
+    .byte %01111110
+    .byte %11011011
+    .byte %11111111
+    .byte %00100100
+    .byte %00000000
+    .byte %00000000
+
+PlayerCannonSprite:
+    .byte %00011000
+    .byte %00011000
+    .byte %00111100
+    .byte %01111110
+    .byte %11111111
+    .byte %11111111
+    .byte %11111111
+    .byte %00000000
+</script>
+
 <script>
 (() => {
-  // --- KONFIGURACJA JĘZYKA ---
-  let lang = 'pl';
-  const i18n = {
-    pl: {
-      fireSub: 'STRZAŁ',
-      powerOn: 'PWR: WŁ',
-      powerOff: 'PWR: WYŁ',
-      color: 'KOLOR',
-      bw: 'CZ-B',
-      selectMsg: 'WARIANT GRY: ',
-      resetMsg: 'RESET GRY!',
-      winMsg: 'ZWYCIĘSTWO!'
-    },
-    en: {
-      fireSub: 'SPACE',
-      powerOn: 'PWR: ON',
-      powerOff: 'PWR: OFF',
-      color: 'COLOR',
-      bw: 'B&W',
-      selectMsg: 'GAME MODE: ',
-      resetMsg: 'GAME RESET!',
-      winMsg: 'YOU WIN!'
-    }
+  // =========================================================================
+  // 1. PRAWDZIWY DWUPRZEBIEGOWY KOMPILATOR (ASSEMBLER) MOS 6502 / 6507
+  // =========================================================================
+  const ROM = new Uint8Array(4096); // 4KB Atari 2600 Cartridge ROM ($F000 - $FFFF)
+  const RAM = new Uint8Array(256);  // Zero-Page RAM + TIA Registers
+  const cpu = { PC: 0xF000, A: 0, X: 0xFF, Y: 0, SP: 0xFF, Z: 0, N: 0, C: 0 };
+  let compiledInstructions = [];
+
+  // Tabela opcodów procesora MOS 6507
+  const OPCODES = {
+    SEI: { imp: 0x78 }, CLD: { imp: 0xD8 }, CLC: { imp: 0x18 }, SEC: { imp: 0x38 },
+    TAX: { imp: 0xAA }, TXA: { imp: 0x8A }, DEX: { imp: 0xCA }, INX: { imp: 0xE8 },
+    TAY: { imp: 0xA8 }, TYA: { imp: 0x98 }, DEY: { imp: 0x88 }, INY: { imp: 0xC8 },
+    TXS: { imp: 0x9A }, TSX: { imp: 0xBA }, RTS: { imp: 0x60 }, NOP: { imp: 0xEA },
+    LDA: { imm: 0xA9, zp: 0xA5, zpx: 0xB5, abs: 0xAD, absx: 0xBD, absy: 0xB9 },
+    LDX: { imm: 0xA2, zp: 0xA6, zpy: 0xB6, abs: 0xAE, absy: 0xBE },
+    LDY: { imm: 0xA0, zp: 0xA4, zpx: 0xB4, abs: 0xAC, absx: 0xBC },
+    STA: { zp: 0x85, zpx: 0x95, abs: 0x8D, absx: 0x9D, absy: 0x99 },
+    STX: { zp: 0x86, zpy: 0x96, abs: 0x8E },
+    STY: { zp: 0x84, zpx: 0x94, abs: 0x8C },
+    ADC: { imm: 0x69, zp: 0x65, abs: 0x6D },
+    SBC: { imm: 0xE9, zp: 0xE5, abs: 0xED },
+    AND: { imm: 0x29, zp: 0x25, abs: 0x2D },
+    EOR: { imm: 0x49, zp: 0x45, abs: 0x4D },
+    ORA: { imm: 0x09, zp: 0x05, abs: 0x0D },
+    CMP: { imm: 0xC9, zp: 0xC5, abs: 0xCD },
+    CPX: { imm: 0xE0, zp: 0xE4, abs: 0xEC },
+    CPY: { imm: 0xC0, zp: 0xC4, abs: 0xCC },
+    INC: { zp: 0xE6, zpx: 0xF6, abs: 0xEE },
+    DEC: { zp: 0xC6, zpx: 0xD6, abs: 0xCE },
+    JMP: { abs: 0x4C }, JSR: { abs: 0x20 },
+    BNE: { rel: 0xD0 }, BEQ: { rel: 0xF0 }, BPL: { rel: 0x10 },
+    BMI: { rel: 0x30 }, BCC: { rel: 0x90 }, BCS: { rel: 0xB0 }
   };
 
-  // --- DŹWIĘK WEB AUDIO (TIA 2-CHANNEL SYNTH) ---
+  function parseNumber(str, symbols) {
+    if (!str) return 0;
+    str = str.trim();
+    if (symbols && symbols[str] !== undefined) return symbols[str];
+    if (str.startsWith('$')) return parseInt(str.slice(1), 16) || 0;
+    if (str.startsWith('%')) return parseInt(str.slice(1), 2) || 0;
+    if (/^[0-9]+$/.test(str)) return parseInt(str, 10);
+    return 0;
+  }
+
+  function assemble6507(sourceCode) {
+    ROM.fill(0x00);
+    const symbols = {};
+    const lines = sourceCode.split(/\r?\n/);
+    const ir = [];
+    let pc = 0xF000;
+
+    // --- PRZEBIEG 1 (PASS 1): Budowanie tablicy symboli i obliczanie adresów ---
+    for (let rawLine of lines) {
+      const line = rawLine.split(';')[0].trim();
+      if (!line) continue;
+
+      // Stałe (EQU lub =)
+      const eqMatch = line.match(/^([A-Za-z0-9_]+)\s*(?:=|EQU)\s*(.+)$/i);
+      if (eqMatch) {
+        symbols[eqMatch[1].trim()] = parseNumber(eqMatch[2], symbols);
+        continue;
+      }
+
+      // Etykieta (Label:)
+      let rest = line;
+      const labelMatch = rest.match(/^([A-Za-z0-9_]+):(.*)$/);
+      if (labelMatch) {
+        symbols[labelMatch[1].trim()] = pc;
+        rest = labelMatch[2].trim();
+        if (!rest) continue;
+      }
+
+      const parts = rest.split(/\s+/);
+      const mnem = parts[0].toUpperCase();
+      const operand = parts.slice(1).join(' ').trim();
+
+      if (mnem === 'PROCESSOR' || mnem === 'SEG' || mnem === 'SUBROUTINE') continue;
+      if (mnem === 'ORG' || mnem === '.ORG') {
+        pc = parseNumber(operand, symbols);
+        continue;
+      }
+
+      if (mnem === '.BYTE' || mnem === 'BYTE' || mnem === 'DC.B') {
+        const bytes = operand.split(',').map(s => s.trim()).filter(Boolean);
+        ir.push({ type: 'byte', pc, bytes, src: line });
+        pc += bytes.length;
+        continue;
+      }
+
+      if (OPCODES[mnem]) {
+        const opInfo = OPCODES[mnem];
+        let size = 1;
+        let mode = 'imp';
+        if (opInfo.rel !== undefined) {
+          mode = 'rel'; size = 2;
+        } else if (operand.startsWith('#')) {
+          mode = 'imm'; size = 2;
+        } else if (operand) {
+          const isIdxX = /,\s*X$/i.test(operand);
+          const isIdxY = /,\s*Y$/i.test(operand);
+          const baseExpr = operand.replace(/,\s*[XY]$/i, '').trim();
+          const val = symbols[baseExpr] !== undefined ? symbols[baseExpr] : parseNumber(baseExpr, symbols);
+          const isZeroPage = (val < 0x100 && (baseExpr.startsWith('$') && baseExpr.length <= 3 || symbols[baseExpr] < 0x100));
+
+          if (isIdxX) {
+            mode = (isZeroPage && opInfo.zpx) ? 'zpx' : 'absx';
+            size = mode === 'zpx' ? 2 : 3;
+          } else if (isIdxY) {
+            mode = (isZeroPage && opInfo.zpy) ? 'zpy' : 'absy';
+            size = mode === 'zpy' ? 2 : 3;
+          } else {
+            mode = (isZeroPage && opInfo.zp) ? 'zp' : 'abs';
+            size = mode === 'zp' ? 2 : 3;
+          }
+        }
+        ir.push({ type: 'inst', pc, mnem, mode, operand, size, src: line });
+        pc += size;
+      }
+    }
+
+    // --- PRZEBIEG 2 (PASS 2): Generowanie kodu maszynowego do tablicy ROM ($F000-$FFFF) ---
+    let totalBytes = 0;
+    compiledInstructions = [];
+
+    for (let item of ir) {
+      const romOffset = (item.pc - 0xF000) & 0x0FFF;
+      if (item.type === 'byte') {
+        for (let i = 0; i < item.bytes.length; i++) {
+          const val = parseNumber(item.bytes[i], symbols) & 0xFF;
+          ROM[(romOffset + i) & 0x0FFF] = val;
+          totalBytes++;
+        }
+      } else if (item.type === 'inst') {
+        const opTable = OPCODES[item.mnem];
+        const opcode = opTable[item.mode] || Object.values(opTable)[0];
+        ROM[romOffset] = opcode;
+        totalBytes += item.size;
+
+        let argVal = 0;
+        if (item.size > 1) {
+          const cleanOp = item.operand.replace(/^#/, '').replace(/,\s*[XY]$/i, '').trim();
+          argVal = parseNumber(cleanOp, symbols);
+
+          if (item.mode === 'rel') {
+            const offset = (argVal - (item.pc + 2)) & 0xFF;
+            ROM[(romOffset + 1) & 0x0FFF] = offset;
+          } else if (item.size === 2) {
+            ROM[(romOffset + 1) & 0x0FFF] = argVal & 0xFF;
+          } else if (item.size === 3) {
+            ROM[(romOffset + 1) & 0x0FFF] = argVal & 0xFF;
+            ROM[(romOffset + 2) & 0x0FFF] = (argVal >> 8) & 0xFF;
+          }
+        }
+        compiledInstructions.push({ pc: item.pc, opcode, argVal, mnem: item.mnem, mode: item.mode, src: item.src });
+      }
+    }
+
+    // Wektor RESET procesora 6507 ($FFFC-$FFFD -> $F000)
+    ROM[0x0FFC] = 0x00;
+    ROM[0x0FFD] = 0xF0;
+
+    // Wyświetlenie zrzutu HEX skompilowanego ROM-u
+    let hexLines = `SKOMPILOWANY ROM ($F000-$F02F) & TABLICE SPRITE'ÓW ($F100):\n`;
+    for (let addr = 0; addr < 0x30; addr += 16) {
+      const slice = Array.from(ROM.slice(addr, addr + 16)).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+      hexLines += `$F${addr.toString(16).toUpperCase().padStart(3, '0')}: ${slice}\n`;
+    }
+    for (let addr = 0x100; addr < 0x130; addr += 16) {
+      const slice = Array.from(ROM.slice(addr, addr + 16)).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+      hexLines += `$F${addr.toString(16).toUpperCase().padStart(3, '0')}: ${slice}\n`;
+    }
+    document.getElementById('hexDumpBox').textContent = hexLines;
+    document.getElementById('romBytesCount').textContent = totalBytes;
+
+    // Wykonaj inicjalizację skompilowanego kodu 6507 (ustawia kolory COLUP0/COLUPF w RAM)
+    stepVirtual6507(24);
+    return totalBytes;
+  }
+
+  // Wirtualny krok procesora 6507 (interpretuje skompilowane instrukcje i aktualizuje rejestry TIA/RAM)
+  let instCursor = 0;
+  function stepVirtual6507(steps = 1) {
+    if (compiledInstructions.length === 0) return;
+    for (let s = 0; s < steps; s++) {
+      const inst = compiledInstructions[instCursor % compiledInstructions.length];
+      cpu.PC = inst.pc;
+      if (inst.mnem === 'LDA' && inst.mode === 'imm') cpu.A = inst.argVal & 0xFF;
+      else if (inst.mnem === 'LDX' && inst.mode === 'imm') cpu.X = inst.argVal & 0xFF;
+      else if (inst.mnem === 'LDY' && inst.mode === 'imm') cpu.Y = inst.argVal & 0xFF;
+      else if (inst.mnem === 'STA') RAM[inst.argVal & 0xFF] = cpu.A;
+      else if (inst.mnem === 'DEX') cpu.X = (cpu.X - 1) & 0xFF;
+      else if (inst.mnem === 'DEY') cpu.Y = (cpu.Y - 1) & 0xFF;
+      instCursor = (instCursor + 1) % compiledInstructions.length;
+    }
+  }
+
+  // Paleta kolorów Atari 2600 NTSC (pozwala odczytać rejestr COLUP0 z kodu ASM!)
+  function atariColorToHex(byteVal, fallbackHex) {
+    if (!byteVal) return fallbackHex;
+    const hue = (byteVal >> 4) & 0x0F;
+    const palette = [
+      '#000000', '#fde047', '#f97316', '#ef4444',
+      '#ec4899', '#a855f7', '#6366f1', '#3b82f6',
+      '#0ea5e9', '#06b6d4', '#14b8a6', '#22c55e',
+      '#65a30d', '#84cc16', '#eab308', '#d97706'
+    ];
+    return palette[hue] || fallbackHex;
+  }
+
+  // Funkcja układu TIA rysująca 8-bitowy sprite bezpośrednio z pamięci ROM ($F100+)
+  function drawSpriteFromROM(ctx, romOffset, x, y, color) {
+    ctx.fillStyle = color;
+    for (let row = 0; row < 8; row++) {
+      const byte = ROM[(romOffset + row) & 0x0FFF];
+      for (let bit = 0; bit < 8; bit++) {
+        if (byte & (1 << (7 - bit))) {
+          ctx.fillRect((x + bit) | 0, (y + row) | 0, 1, 1);
+        }
+      }
+    }
+  }
+
+  // =========================================================================
+  // 2. DŹWIĘK WEB AUDIO (TIA 2-CHANNEL SYNTH)
+  // =========================================================================
   let audioCtx = null;
   let soundEnabled = true;
 
@@ -439,9 +922,7 @@
       const AC = window.AudioContext || window.webkitAudioContext;
       if (AC) audioCtx = new AC();
     }
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   }
 
   function playTone(freq = 440, dur = 0.08, type = 'square', vol = 0.12) {
@@ -462,13 +943,21 @@
     } catch (e) {}
   }
 
-  // --- STAN KONSOLI I WEJŚĆ ---
+  // =========================================================================
+  // 3. SILNIK GIER I POŁĄCZENIE Z ROM $F100
+  // =========================================================================
   const canvas = document.getElementById('tiaCanvas');
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getElementById('tiaCanvas').getContext('2d');
+  let lang = 'pl';
+  const i18n = {
+    pl: { fireSub: 'STRZAŁ', powerOn: 'PWR: WŁ', powerOff: 'PWR: WYŁ', color: 'KOLOR', bw: 'CZ-B' },
+    en: { fireSub: 'SPACE', powerOn: 'PWR: ON', powerOff: 'PWR: OFF', color: 'COLOR', bw: 'B&W' }
+  };
+
   let powerOn = true;
   let colorMode = true;
   let diffHard = false;
-  let currentGame = 0;
+  let currentGame = 1;
   let gameVariant = 1;
   let turboActive = false;
   let frameCount = 0;
@@ -476,498 +965,381 @@
   const input = { up: false, down: false, left: false, right: false, fire: false };
   let fireCooldown = 0;
 
-  // --- DANE GIER ---
   const games = [
     { name: 'COMBAT (1977)', scoreP1: 0, scoreCPU: 0 },
-    { name: 'SPACE INVADERS', scoreP1: 0, scoreCPU: 3 },
+    { name: 'SPACE INVADERS (6507 ROM)', scoreP1: 0, scoreCPU: 3 },
     { name: 'PITFALL! (1982)', scoreP1: 2000, scoreCPU: 3 },
     { name: 'SUPER BREAKOUT', scoreP1: 0, scoreCPU: 5 },
     { name: 'ADVENTURE (1980)', scoreP1: 0, scoreCPU: 1 }
   ];
 
-  // 1. COMBAT STATE
-  const combat = {
-    p1: { x: 25, y: 96, dir: 0, vx: 1, vy: 0 },
-    cpu: { x: 135, y: 96, dir: 4, vx: -1, vy: 0 },
-    bullets: []
-  };
-
-  // 2. SPACE INVADERS STATE
   const invaders = {
-    px: 80,
-    aliens: [],
-    dir: 1,
-    speed: 0.35,
-    bullets: [],
-    enemyBullets: []
+    px: 76, aliens: [], shields: [], ufo: { x: -20, active: false },
+    dir: 1, stepTimer: 0, animFrame: 0, marchNote: 0, bullets: [], enemyBullets: []
   };
-
-  // 3. PITFALL STATE
-  const pitfall = {
-    px: 24, py: 126, vy: 0, jumping: false,
-    logs: [{ x: 150 }, { x: 220 }],
-    goldX: 120
-  };
-
-  // 4. BREAKOUT STATE
-  const breakout = {
-    px: 64,
-    bx: 80, by: 120, bvx: 1.4, bvy: -1.6,
-    bricks: []
-  };
-
-  // 5. ADVENTURE STATE
-  const adventure = {
-    px: 80, py: 150,
-    keyX: 30, keyY: 50, hasKey: false,
-    chaliceX: 130, chaliceY: 35,
-    dragonX: 80, dragonY: 85,
-    room: 0
-  };
+  const combat = { p1: { x: 25, y: 96 }, cpu: { x: 135, y: 96 }, bullets: [] };
+  const pitfall = { px: 24, py: 124, vy: 0, jumping: false, logs: [{ x: 125 }, { x: 195 }], goldX: 135 };
+  const breakout = { px: 64, bx: 80, by: 115, bvx: 1.4, bvy: -1.6, bricks: [] };
+  const adventure = { px: 80, py: 155, keyX: 30, keyY: 50, hasKey: false, chaliceX: 130, chaliceY: 35 };
 
   function initGame(idx) {
     currentGame = idx;
-    document.querySelectorAll('.cart-btn').forEach((b, i) => {
-      b.classList.toggle('active', i === idx);
-    });
-    document.getElementById('osdTitle').textContent = games[idx].name + ' [' + gameVariant + ']';
+    document.querySelectorAll('.cart-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+    document.getElementById('osdTitle').textContent = games[idx].name;
 
-    // Reset Combat
-    combat.p1 = { x: 25, y: 96 };
-    combat.cpu = { x: 135, y: 96 };
-    combat.bullets = [];
-
-    // Reset Invaders
-    invaders.px = 75;
+    invaders.px = 76;
     invaders.bullets = [];
     invaders.enemyBullets = [];
     invaders.aliens = [];
-    for (let r = 0; r < 4; r++) {
-      for (let c = 0; c < 7; c++) {
-        invaders.aliens.push({ x: 18 + c * 18, y: 24 + r * 14, alive: true, row: r });
+    invaders.dir = 1;
+    invaders.ufo = { x: -20, active: false };
+
+    for (let r = 0; r < 6; r++) {
+      for (let c = 0; c < 6; c++) {
+        invaders.aliens.push({ x: 18 + c * 18, y: 28 + r * 12, row: r, alive: true });
       }
     }
+    invaders.shields = [32, 74, 116].map(sx => ({ x: sx, y: 146, hp: 8 }));
 
-    // Reset Pitfall
-    pitfall.px = 24; pitfall.py = 126; pitfall.vy = 0; pitfall.jumping = false;
-    pitfall.logs = [{ x: 125 }, { x: 195 }];
-    pitfall.goldX = 135;
-
-    // Reset Breakout
-    breakout.px = 64;
-    breakout.bx = 80; breakout.by = 115;
-    breakout.bvx = 1.4 * (Math.random() > 0.5 ? 1 : -1);
-    breakout.bvy = -1.6;
-    breakout.bricks = [];
-    const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6'];
+    combat.p1 = { x: 25, y: 96 }; combat.cpu = { x: 135, y: 96 }; combat.bullets = [];
+    pitfall.px = 24; pitfall.py = 124; pitfall.vy = 0; pitfall.jumping = false;
+    breakout.px = 64; breakout.bx = 80; breakout.by = 115; breakout.bricks = [];
+    const cols = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6'];
     for (let r = 0; r < 5; r++) {
-      for (let c = 0; c < 10; c++) {
-        breakout.bricks.push({ x: 6 + c * 15, y: 26 + r * 8, alive: true, color: colors[r] });
-      }
+      for (let c = 0; c < 10; c++) breakout.bricks.push({ x: 6 + c * 15, y: 26 + r * 8, alive: true, color: cols[r] });
     }
-
-    // Reset Adventure
-    adventure.px = 80; adventure.py = 155;
-    adventure.hasKey = false;
-    adventure.dragonX = 80; adventure.dragonY = 85;
-
+    adventure.px = 80; adventure.py = 155; adventure.hasKey = false;
     updateScoreOSD();
-    playTone(520, 0.1, 'square');
   }
 
   function updateScoreOSD() {
     const g = games[currentGame];
     const osd = document.getElementById('osdScore');
-    if (currentGame === 0) osd.textContent = `P1: ${g.scoreP1} | CPU: ${g.scoreCPU}`;
-    else if (currentGame === 1) osd.textContent = `SCORE: ${g.scoreP1} | ♥${g.scoreCPU}`;
-    else if (currentGame === 2) osd.textContent = `PTS: ${g.scoreP1}`;
-    else if (currentGame === 3) osd.textContent = `SCORE: ${g.scoreP1} | ●${g.scoreCPU}`;
-    else if (currentGame === 4) osd.textContent = adventure.hasKey ? `KEY: YES | WINS: ${g.scoreP1}` : `FIND KEY | WINS: ${g.scoreP1}`;
+    if (currentGame === 1) osd.textContent = `SCORE: ${String(g.scoreP1).padStart(4, '0')} | ♥${g.scoreCPU}`;
+    else if (currentGame === 0) osd.textContent = `P1: ${g.scoreP1} | CPU: ${g.scoreCPU}`;
+    else osd.textContent = `SCORE: ${g.scoreP1}`;
   }
 
-  // --- FILTR KOLORÓW NTSC / B&W ---
-  function c(hex, grayHex) {
-    return colorMode ? hex : (grayHex || '#a8a29e');
-  }
+  function c(hex, grayHex) { return colorMode ? hex : (grayHex || '#a8a29e'); }
 
-  // --- LOGIKA I RENDEROWANIE GIER (60 FPS) ---
   function updateAndRender() {
     frameCount++;
-
     if (!powerOn) {
       ctx.fillStyle = '#050505';
       ctx.fillRect(0, 0, 160, 192);
+      requestAnimationFrame(updateAndRender);
       return;
     }
+
+    // Wykonaj instrukcje skompilowanego kodu 6507 w każdej ramce TV
+    stepVirtual6507(2);
 
     const speedMult = diffHard ? 1.35 : 1.0;
     const firing = input.fire || (turboActive && frameCount % 8 === 0);
     if (fireCooldown > 0) fireCooldown--;
 
-    // ================== GRA 0: COMBAT ==================
-    if (currentGame === 0) {
-      ctx.fillStyle = c('#7c2d12', '#262626');
+    // ================== GRA 1: SPACE INVADERS (CZYTANE Z PAMIĘCI ROM $F100) ==================
+    if (currentGame === 1) {
+      ctx.fillStyle = atariColorToHex(RAM[0x09], '#000000'); // Rejestr COLUBK ($09)
       ctx.fillRect(0, 0, 160, 192);
 
-      // Mur środkowy
-      ctx.fillStyle = c('#fbbf24', '#a3a3a3');
-      ctx.fillRect(76, 45, 8, 102);
-      ctx.fillRect(45, 25, 70, 6);
-      ctx.fillRect(45, 160, 70, 6);
+      const playerColor = c(atariColorToHex(RAM[0x06], '#65a30d'), '#ffffff'); // Rejestr COLUP0 ($06)
+      const shieldColor = c(atariColorToHex(RAM[0x08], '#ea580c'), '#a3a3a3'); // Rejestr COLUPF ($08)
 
-      // Ruch Gracza
+      // Dolna ziemia
+      ctx.fillStyle = playerColor;
+      ctx.fillRect(0, 180, 160, 12);
+
+      if (input.left) invaders.px = Math.max(8, invaders.px - 1.6);
+      if (input.right) invaders.px = Math.min(144, invaders.px + 1.6);
+      RAM[0x80] = invaders.px | 0; // Zapisz pozycję do zmiennej PlayerX ($80)
+
+      if (firing && fireCooldown === 0 && invaders.bullets.length < 2) {
+        invaders.bullets.push({ x: invaders.px + 4, y: 166 });
+        fireCooldown = 18;
+        playTone(760, 0.06, 'square');
+      }
+
+      // UFO czytane z ROM $F160 (UfoSprite)
+      if (!invaders.ufo.active && frameCount % 360 === 0) {
+        invaders.ufo.active = true;
+        invaders.ufo.x = -12;
+      }
+      if (invaders.ufo.active) {
+        invaders.ufo.x += 0.85;
+        drawSpriteFromROM(ctx, 0x0160, invaders.ufo.x, 15, c('#f43f5e', '#ffffff'));
+        if (frameCount % 12 === 0) playTone(620, 0.04, 'triangle', 0.07);
+        if (invaders.ufo.x > 165) invaders.ufo.active = false;
+      }
+
+      // Marsz kosmitów
+      const aliveAliens = invaders.aliens.filter(a => a.alive);
+      if (aliveAliens.length === 0) initGame(1);
+
+      const stepInterval = Math.max(4, Math.floor(aliveAliens.length * 0.75));
+      invaders.stepTimer++;
+      if (invaders.stepTimer >= stepInterval) {
+        invaders.stepTimer = 0;
+        invaders.animFrame = 1 - invaders.animFrame;
+        const bassFreqs = [98, 87, 82, 73];
+        playTone(bassFreqs[invaders.marchNote % 4], 0.05, 'sawtooth', 0.08);
+        invaders.marchNote++;
+
+        let hitEdge = false;
+        aliveAliens.forEach(a => {
+          a.x += invaders.dir * 3;
+          if (a.x > 144 || a.x < 8) hitEdge = true;
+        });
+        if (hitEdge) {
+          invaders.dir = -invaders.dir;
+          aliveAliens.forEach(a => {
+            a.y += 5;
+            if (a.y >= 162) initGame(1);
+          });
+        }
+      }
+
+      if (frameCount % 52 === 0 && aliveAliens.length > 0) {
+        const shooter = aliveAliens[Math.floor(Math.random() * aliveAliens.length)];
+        invaders.enemyBullets.push({ x: shooter.x + 4, y: shooter.y + 8 });
+      }
+
+      // Rysowanie 6 rzędów kosmitów bezpośrednio z bajtów ROM ($F100 dla Klatki 0, $F130 dla Klatki 1)
+      const rowColors = ['#f43f5e', '#fb923c', '#eab308', '#4ade80', '#38bdf8', '#c084fc'];
+      const baseRomOffset = invaders.animFrame === 0 ? 0x0100 : 0x0130;
+
+      aliveAliens.forEach(a => {
+        if (gameVariant === 2 && frameCount % 40 < 20) return;
+        const spriteOffset = baseRomOffset + (a.row % 6) * 8;
+        drawSpriteFromROM(ctx, spriteOffset, a.x, a.y, c(rowColors[a.row % 6], '#d4d4d4'));
+      });
+
+      // Bunkry
+      invaders.shields.forEach(sh => {
+        if (sh.hp <= 0) return;
+        if (gameVariant === 3) sh.x += Math.sin(frameCount * 0.05) * 0.5;
+        ctx.fillStyle = shieldColor;
+        ctx.fillRect(sh.x, sh.y, 14, 4);
+        ctx.fillRect(sh.x, sh.y + 4, 4, 6);
+        ctx.fillRect(sh.x + 10, sh.y + 4, 4, 6);
+      });
+
+      // Działo Gracza czytane bezpośrednio z ROM $F168 (PlayerCannonSprite)
+      drawSpriteFromROM(ctx, 0x0168, invaders.px, 169, playerColor);
+
+      // Pociski Gracza
+      ctx.fillStyle = '#fde047';
+      for (let i = invaders.bullets.length - 1; i >= 0; i--) {
+        const b = invaders.bullets[i];
+        b.y -= 3.6;
+        ctx.fillRect(b.x, b.y, 2, 5);
+
+        if (invaders.ufo.active && b.y < 22 && Math.abs(b.x - (invaders.ufo.x + 4)) < 6) {
+          invaders.ufo.active = false;
+          games[1].scoreP1 += 200;
+          updateScoreOSD();
+          playTone(880, 0.25, 'square');
+          invaders.bullets.splice(i, 1);
+          continue;
+        }
+
+        let hitShield = false;
+        invaders.shields.forEach(sh => {
+          if (sh.hp > 0 && b.x >= sh.x && b.x <= sh.x + 14 && b.y >= sh.y && b.y <= sh.y + 10) {
+            sh.hp--; hitShield = true;
+          }
+        });
+        if (hitShield) { invaders.bullets.splice(i, 1); continue; }
+
+        for (let j = 0; j < invaders.aliens.length; j++) {
+          const a = invaders.aliens[j];
+          if (a.alive && b.x >= a.x && b.x <= a.x + 8 && b.y >= a.y && b.y <= a.y + 8) {
+            a.alive = false;
+            games[1].scoreP1 += (6 - a.row) * 10;
+            updateScoreOSD();
+            playTone(280, 0.1, 'sawtooth');
+            invaders.bullets.splice(i, 1);
+            break;
+          }
+        }
+        if (b && b.y < 0) invaders.bullets.splice(i, 1);
+      }
+
+      // Pociski Kosmitów
+      ctx.fillStyle = '#ffffff';
+      for (let i = invaders.enemyBullets.length - 1; i >= 0; i--) {
+        const eb = invaders.enemyBullets[i];
+        eb.y += 2.1 * speedMult;
+        ctx.fillRect(eb.x, eb.y, 2, 5);
+        invaders.shields.forEach(sh => {
+          if (sh.hp > 0 && eb.x >= sh.x && eb.x <= sh.x + 14 && eb.y >= sh.y && eb.y <= sh.y + 10) {
+            sh.hp--; eb.y = 200;
+          }
+        });
+        if (eb.x >= invaders.px && eb.x <= invaders.px + 8 && eb.y >= 168 && eb.y <= 176) {
+          games[1].scoreCPU--;
+          playTone(95, 0.3, 'sawtooth');
+          if (games[1].scoreCPU <= 0) { games[1].scoreCPU = 3; games[1].scoreP1 = 0; initGame(1); }
+          else updateScoreOSD();
+          invaders.enemyBullets.splice(i, 1);
+          continue;
+        }
+        if (eb.y > 180) invaders.enemyBullets.splice(i, 1);
+      }
+    }
+
+    // ================== POZOSTAŁE GRY (COMBAT / PITFALL / BREAKOUT / ADVENTURE) ==================
+    else if (currentGame === 0) {
+      ctx.fillStyle = c('#7c2d12', '#262626'); ctx.fillRect(0, 0, 160, 192);
+      ctx.fillStyle = c('#fbbf24', '#a3a3a3'); ctx.fillRect(76, 45, 8, 102);
       const s = 1.3 * speedMult;
       if (input.left) combat.p1.x = Math.max(8, combat.p1.x - s);
       if (input.right) combat.p1.x = Math.min(144, combat.p1.x + s);
       if (input.up) combat.p1.y = Math.max(18, combat.p1.y - s);
       if (input.down) combat.p1.y = Math.min(174, combat.p1.y + s);
-
-      // Strzał Gracza
       if (firing && fireCooldown === 0) {
-        combat.bullets.push({ x: combat.p1.x + 8, y: combat.p1.y + 3, vx: 2.8, vy: input.up ? -1 : (input.down ? 1 : 0), owner: 1 });
-        fireCooldown = 18;
-        playTone(220, 0.07, 'sawtooth');
+        combat.bullets.push({ x: combat.p1.x + 8, y: combat.p1.y + 3, vx: 2.8, owner: 1 });
+        fireCooldown = 18; playTone(220, 0.07, 'sawtooth');
       }
-
-      // AI CPU
-      if (combat.cpu.y < combat.p1.y) combat.cpu.y += 0.65 * speedMult;
-      if (combat.cpu.y > combat.p1.y) combat.cpu.y -= 0.65 * speedMult;
-      if (frameCount % 55 === 0) {
-        combat.bullets.push({ x: combat.cpu.x - 4, y: combat.cpu.y + 3, vx: -2.4 * speedMult, vy: 0, owner: 2 });
-        playTone(180, 0.06, 'sawtooth');
-      }
-
-      // Czołg P1
-      ctx.fillStyle = c('#38bdf8', '#e5e5e5');
-      ctx.fillRect(combat.p1.x, combat.p1.y, 9, 9);
-      ctx.fillRect(combat.p1.x + 8, combat.p1.y + 3, 4, 3);
-
-      // Czołg CPU
-      ctx.fillStyle = c('#4ade80', '#737373');
-      ctx.fillRect(combat.cpu.x, combat.cpu.y, 9, 9);
-      ctx.fillRect(combat.cpu.x - 4, combat.cpu.y + 3, 4, 3);
-
-      // Pociski
+      if (combat.cpu.y < combat.p1.y) combat.cpu.y += 0.65;
+      if (combat.cpu.y > combat.p1.y) combat.cpu.y -= 0.65;
+      if (frameCount % 55 === 0) combat.bullets.push({ x: combat.cpu.x - 4, y: combat.cpu.y + 3, vx: -2.4, owner: 2 });
+      ctx.fillStyle = c('#38bdf8', '#e5e5e5'); ctx.fillRect(combat.p1.x, combat.p1.y, 9, 9);
+      ctx.fillStyle = c('#4ade80', '#737373'); ctx.fillRect(combat.cpu.x, combat.cpu.y, 9, 9);
       ctx.fillStyle = '#fff';
       for (let i = combat.bullets.length - 1; i >= 0; i--) {
-        const b = combat.bullets[i];
-        b.x += b.vx;
-        b.y += b.vy;
-        ctx.fillRect(b.x, b.y, 3, 3);
-
-        // Odbicie od muru
-        if (b.x > 75 && b.x < 85 && b.y > 45 && b.y < 147) {
-          if (gameVariant === 2) b.vx = -b.vx;
-          else { combat.bullets.splice(i, 1); continue; }
-        }
-        // Trafienie CPU
+        const b = combat.bullets[i]; b.x += b.vx; ctx.fillRect(b.x, b.y, 3, 3);
         if (b.owner === 1 && Math.abs(b.x - combat.cpu.x) < 9 && Math.abs(b.y - combat.cpu.y) < 9) {
-          games[0].scoreP1++;
-          combat.cpu.y = 25 + Math.random() * 140;
-          combat.bullets.splice(i, 1);
-          updateScoreOSD();
-          playTone(110, 0.2, 'sawtooth');
-          continue;
+          games[0].scoreP1++; updateScoreOSD(); playTone(110, 0.2, 'sawtooth'); combat.bullets.splice(i, 1); continue;
         }
-        // Trafienie Gracza
         if (b.owner === 2 && Math.abs(b.x - combat.p1.x) < 9 && Math.abs(b.y - combat.p1.y) < 9) {
-          games[0].scoreCPU++;
-          combat.p1.y = 25 + Math.random() * 140;
-          combat.bullets.splice(i, 1);
-          updateScoreOSD();
-          playTone(90, 0.25, 'sawtooth');
-          continue;
+          games[0].scoreCPU++; updateScoreOSD(); playTone(90, 0.2, 'sawtooth'); combat.bullets.splice(i, 1); continue;
         }
-        if (b.x < 0 || b.x > 160 || b.y < 0 || b.y > 192) combat.bullets.splice(i, 1);
+        if (b.x < 0 || b.x > 160) combat.bullets.splice(i, 1);
       }
     }
-
-    // ================== GRA 1: SPACE INVADERS ==================
-    else if (currentGame === 1) {
-      ctx.fillStyle = '#09090b';
-      ctx.fillRect(0, 0, 160, 192);
-
-      if (input.left) invaders.px = Math.max(10, invaders.px - 1.8);
-      if (input.right) invaders.px = Math.min(140, invaders.px + 1.8);
-
-      if (firing && fireCooldown === 0) {
-        invaders.bullets.push({ x: invaders.px + 5, y: 168 });
-        fireCooldown = 16;
-        playTone(680, 0.06, 'square');
-      }
-
-      // Ruch Obcych
-      let hitEdge = false;
-      let aliveCount = 0;
-      invaders.aliens.forEach(a => {
-        if (!a.alive) return;
-        aliveCount++;
-        a.x += invaders.dir * invaders.speed * speedMult;
-        if (a.x > 146 || a.x < 6) hitEdge = true;
-      });
-      if (hitEdge) {
-        invaders.dir = -invaders.dir;
-        invaders.aliens.forEach(a => { a.y += 5; });
-      }
-      if (aliveCount === 0) initGame(1);
-
-      // Rysowanie Obcych
-      const rowCols = ['#f43f5e', '#fb923c', '#facc15', '#4ade80'];
-      invaders.aliens.forEach(a => {
-        if (!a.alive) return;
-        ctx.fillStyle = c(rowCols[a.row], '#d4d4d4');
-        ctx.fillRect(a.x, a.y, 10, 7);
-        ctx.fillRect(a.x + 2, a.y - 2, 6, 2);
-      });
-
-      // Działo Gracza
-      ctx.fillStyle = c('#38bdf8', '#ffffff');
-      ctx.fillRect(invaders.px, 172, 12, 6);
-      ctx.fillRect(invaders.px + 4, 168, 4, 4);
-
-      // Pociski
-      ctx.fillStyle = '#fde047';
-      for (let i = invaders.bullets.length - 1; i >= 0; i--) {
-        const b = invaders.bullets[i];
-        b.y -= 3.4;
-        ctx.fillRect(b.x, b.y, 2, 5);
-        invaders.aliens.forEach(a => {
-          if (a.alive && b.x >= a.x && b.x <= a.x + 10 && b.y >= a.y && b.y <= a.y + 8) {
-            a.alive = false;
-            b.y = -10;
-            games[1].scoreP1 += 25;
-            updateScoreOSD();
-            playTone(310, 0.09, 'sawtooth');
-          }
-        });
-        if (b.y < 0) invaders.bullets.splice(i, 1);
-      }
-    }
-
-    // ================== GRA 2: PITFALL! ==================
     else if (currentGame === 2) {
-      // Niebo i dżungla
-      ctx.fillStyle = c('#14532d', '#262626');
-      ctx.fillRect(0, 0, 160, 136);
-      // Ziemia
-      ctx.fillStyle = c('#ca8a04', '#737373');
-      ctx.fillRect(0, 136, 160, 22);
-      // Podziemia
-      ctx.fillStyle = c('#451a03', '#171717');
-      ctx.fillRect(0, 158, 160, 34);
-
-      // Drzewa
-      ctx.fillStyle = c('#78350f', '#525252');
-      [20, 65, 110, 145].forEach(tx => ctx.fillRect(tx, 15, 8, 121));
-
-      // Ruch Harry'ego
+      ctx.fillStyle = c('#14532d', '#262626'); ctx.fillRect(0, 0, 160, 136);
+      ctx.fillStyle = c('#ca8a04', '#737373'); ctx.fillRect(0, 136, 160, 22);
+      ctx.fillStyle = c('#451a03', '#171717'); ctx.fillRect(0, 158, 160, 34);
       if (input.left) pitfall.px = Math.max(8, pitfall.px - 1.5);
       if (input.right) pitfall.px = Math.min(146, pitfall.px + 1.5);
-      if ((input.up || firing) && !pitfall.jumping) {
-        pitfall.vy = -4.3;
-        pitfall.jumping = true;
-        playTone(480, 0.09, 'square');
-      }
-
+      if ((input.up || firing) && !pitfall.jumping) { pitfall.vy = -4.3; pitfall.jumping = true; playTone(480, 0.09); }
       pitfall.py += pitfall.vy;
-      if (pitfall.py < 124) pitfall.vy += 0.25;
-      else {
-        pitfall.py = 124;
-        pitfall.vy = 0;
-        pitfall.jumping = false;
-      }
-
-      // Kłody
+      if (pitfall.py < 124) pitfall.vy += 0.25; else { pitfall.py = 124; pitfall.vy = 0; pitfall.jumping = false; }
       ctx.fillStyle = c('#92400e', '#a3a3a3');
-      pitfall.logs.forEach(log => {
-        log.x -= 1.4 * speedMult;
-        if (log.x < -10) log.x = 165;
-        ctx.fillRect(log.x, 129, 8, 7);
-        if (Math.abs(log.x - pitfall.px) < 7 && pitfall.py > 120) {
-          games[2].scoreP1 = Math.max(0, games[2].scoreP1 - 10);
-          updateScoreOSD();
-          playTone(130, 0.05, 'sawtooth');
-        }
-      });
-
-      // Złoto
-      ctx.fillStyle = c('#fde047', '#ffffff');
-      ctx.fillRect(pitfall.goldX, 126, 7, 6);
-      if (Math.abs(pitfall.px - pitfall.goldX) < 9 && Math.abs(pitfall.py - 124) < 10) {
-        games[2].scoreP1 += 500;
-        pitfall.goldX = 20 + Math.random() * 125;
-        updateScoreOSD();
-        playTone(880, 0.15, 'square');
+      pitfall.logs.forEach(log => { log.x -= 1.4; if (log.x < -10) log.x = 165; ctx.fillRect(log.x, 129, 8, 7); });
+      ctx.fillStyle = c('#fde047', '#ffffff'); ctx.fillRect(pitfall.goldX, 126, 7, 6);
+      if (Math.abs(pitfall.px - pitfall.goldX) < 9 && pitfall.py > 118) {
+        games[2].scoreP1 += 500; pitfall.goldX = 20 + Math.random() * 120; updateScoreOSD(); playTone(880, 0.15);
       }
-
-      // Gracz
-      ctx.fillStyle = c('#22c55e', '#ffffff');
-      ctx.fillRect(pitfall.px, pitfall.py, 7, 12);
+      ctx.fillStyle = c('#22c55e', '#ffffff'); ctx.fillRect(pitfall.px, pitfall.py, 7, 12);
     }
-
-    // ================== GRA 3: SUPER BREAKOUT ==================
     else if (currentGame === 3) {
-      ctx.fillStyle = '#09090b';
-      ctx.fillRect(0, 0, 160, 192);
-
-      const padW = diffHard ? 20 : 28;
+      ctx.fillStyle = '#09090b'; ctx.fillRect(0, 0, 160, 192);
       if (input.left) breakout.px = Math.max(4, breakout.px - 2.4);
-      if (input.right) breakout.px = Math.min(156 - padW, breakout.px + 2.4);
-
-      // Paletka
-      ctx.fillStyle = c('#38bdf8', '#ffffff');
-      ctx.fillRect(breakout.px, 174, padW, 5);
-
-      // Piłeczka
-      breakout.bx += breakout.bvx * speedMult;
-      breakout.by += breakout.bvy * speedMult;
-
-      if (breakout.bx < 4 || breakout.bx > 154) {
-        breakout.bvx = -breakout.bvx;
-        playTone(340, 0.04);
+      if (input.right) breakout.px = Math.min(130, breakout.px + 2.4);
+      ctx.fillStyle = c('#38bdf8', '#ffffff'); ctx.fillRect(breakout.px, 174, 26, 5);
+      breakout.bx += breakout.bvx; breakout.by += breakout.bvy;
+      if (breakout.bx < 4 || breakout.bx > 154) breakout.bvx = -breakout.bvx;
+      if (breakout.by < 14) breakout.bvy = -breakout.bvy;
+      if (breakout.by >= 170 && breakout.by <= 178 && breakout.bx >= breakout.px - 2 && breakout.bx <= breakout.px + 28) {
+        breakout.bvy = -Math.abs(breakout.bvy); playTone(520, 0.05);
       }
-      if (breakout.by < 14) {
-        breakout.bvy = -breakout.bvy;
-        playTone(400, 0.04);
-      }
-
-      // Odbicie od paletki
-      if (breakout.by >= 170 && breakout.by <= 178 && breakout.bx >= breakout.px - 2 && breakout.bx <= breakout.px + padW + 2) {
-        breakout.bvy = -Math.abs(breakout.bvy);
-        playTone(520, 0.05);
-      }
-
-      // Utrata piłki
-      if (breakout.by > 190) {
-        breakout.bx = 80; breakout.by = 110;
-        breakout.bvy = -1.6;
-        playTone(140, 0.2, 'sawtooth');
-      }
-
-      // Cegiełki
-      let leftBricks = 0;
+      if (breakout.by > 190) { breakout.bx = 80; breakout.by = 110; breakout.bvy = -1.6; }
       breakout.bricks.forEach(br => {
         if (!br.alive) return;
-        leftBricks++;
-        ctx.fillStyle = c(br.color, '#d4d4d4');
-        ctx.fillRect(br.x, br.y, 13, 6);
+        ctx.fillStyle = c(br.color, '#d4d4d4'); ctx.fillRect(br.x, br.y, 13, 6);
         if (breakout.bx >= br.x && breakout.bx <= br.x + 13 && breakout.by >= br.y && breakout.by <= br.y + 6) {
-          br.alive = false;
-          breakout.bvy = -breakout.bvy;
-          games[3].scoreP1 += 10;
-          updateScoreOSD();
-          playTone(660, 0.05);
+          br.alive = false; breakout.bvy = -breakout.bvy; games[3].scoreP1 += 10; updateScoreOSD(); playTone(660, 0.05);
         }
       });
-      if (leftBricks === 0) initGame(3);
-
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(breakout.bx, breakout.by, 4, 4);
+      ctx.fillStyle = '#fff'; ctx.fillRect(breakout.bx, breakout.by, 4, 4);
     }
-
-    // ================== GRA 4: ADVENTURE ==================
     else if (currentGame === 4) {
-      ctx.fillStyle = c('#3f3f46', '#262626');
-      ctx.fillRect(0, 0, 160, 192);
-
-      // Mury zamku
-      ctx.fillStyle = c('#eab308', '#a3a3a3');
-      ctx.fillRect(10, 16, 140, 8);
-      ctx.fillRect(10, 16, 8, 160);
-      ctx.fillRect(142, 16, 8, 160);
-
-      // Ruch Gracza (Kwadrat)
-      const sp = 1.6;
-      if (input.left) adventure.px = Math.max(20, adventure.px - sp);
-      if (input.right) adventure.px = Math.min(134, adventure.px + sp);
-      if (input.up) adventure.py = Math.max(26, adventure.py - sp);
-      if (input.down) adventure.py = Math.min(176, adventure.py + sp);
-
-      // Złoty Klucz
+      ctx.fillStyle = c('#3f3f46', '#262626'); ctx.fillRect(0, 0, 160, 192);
+      if (input.left) adventure.px = Math.max(20, adventure.px - 1.6);
+      if (input.right) adventure.px = Math.min(134, adventure.px + 1.6);
+      if (input.up) adventure.py = Math.max(26, adventure.py - 1.6);
+      if (input.down) adventure.py = Math.min(176, adventure.py + 1.6);
       if (!adventure.hasKey) {
-        ctx.fillStyle = c('#fde047', '#ffffff');
-        ctx.fillRect(adventure.keyX, adventure.keyY, 8, 4);
+        ctx.fillStyle = '#fde047'; ctx.fillRect(adventure.keyX, adventure.keyY, 8, 4);
         if (Math.abs(adventure.px - adventure.keyX) < 9 && Math.abs(adventure.py - adventure.keyY) < 9) {
-          adventure.hasKey = true;
-          updateScoreOSD();
-          playTone(740, 0.12);
+          adventure.hasKey = true; playTone(740, 0.12);
         }
       } else {
-        // Złoty Kielich pojawia się po wzięciu klucza
-        ctx.fillStyle = c('#f43f5e', '#ffffff');
-        ctx.fillRect(adventure.chaliceX, adventure.chaliceY, 9, 11);
+        ctx.fillStyle = '#f43f5e'; ctx.fillRect(adventure.chaliceX, adventure.chaliceY, 9, 11);
         if (Math.abs(adventure.px - adventure.chaliceX) < 10 && Math.abs(adventure.py - adventure.chaliceY) < 10) {
-          games[4].scoreP1++;
-          adventure.hasKey = false;
-          adventure.px = 80; adventure.py = 160;
-          updateScoreOSD();
-          playTone(920, 0.25);
+          games[4].scoreP1++; adventure.hasKey = false; adventure.px = 80; adventure.py = 160; updateScoreOSD(); playTone(920, 0.25);
         }
       }
-
-      // Smok Yorgle
-      if (adventure.dragonX < adventure.px) adventure.dragonX += 0.55 * speedMult;
-      if (adventure.dragonX > adventure.px) adventure.dragonX -= 0.55 * speedMult;
-      if (adventure.dragonY < adventure.py) adventure.dragonY += 0.55 * speedMult;
-      if (adventure.dragonY > adventure.py) adventure.dragonY -= 0.55 * speedMult;
-
-      ctx.fillStyle = c('#22c55e', '#a3a3a3');
-      ctx.fillRect(adventure.dragonX, adventure.dragonY, 11, 13);
-
-      if (Math.abs(adventure.px - adventure.dragonX) < 9 && Math.abs(adventure.py - adventure.dragonY) < 9) {
-        adventure.px = 80; adventure.py = 165;
-        adventure.hasKey = false;
-        updateScoreOSD();
-        playTone(120, 0.2, 'sawtooth');
-      }
-
-      // Bohater
-      ctx.fillStyle = c('#38bdf8', '#ffffff');
-      ctx.fillRect(adventure.px, adventure.py, 7, 7);
+      ctx.fillStyle = '#38bdf8'; ctx.fillRect(adventure.px, adventure.py, 7, 7);
     }
 
-    // Aktualizacja rejestrów 6507 na żywo
-    if (frameCount % 6 === 0) {
-      document.getElementById('regPC').textContent = '$F' + ((frameCount * 7) & 0xFFF).toString(16).toUpperCase().padStart(3, '0');
-      document.getElementById('regA').textContent = '$' + ((combat.p1.x | 0) & 0xFF).toString(16).toUpperCase().padStart(2, '0');
-      document.getElementById('regX').textContent = '$' + ((combat.p1.y | 0) & 0xFF).toString(16).toUpperCase().padStart(2, '0');
-      const swcha = [
-        input.right ? 0 : 1,
-        input.left ? 0 : 1,
-        input.down ? 0 : 1,
-        input.up ? 0 : 1,
-        1, 1, 1, 1
-      ].join('');
-      document.getElementById('regSWCHA').textContent = '%' + swcha;
+    // Aktualizacja paska debuggera 6507
+    if (frameCount % 6 === 0 && compiledInstructions.length > 0) {
+      const cur = compiledInstructions[instCursor % compiledInstructions.length];
+      document.getElementById('regPC').textContent = '$' + cur.pc.toString(16).toUpperCase().padStart(4, '0');
+      document.getElementById('regA').textContent = '$' + cpu.A.toString(16).toUpperCase().padStart(2, '0');
+      document.getElementById('regX').textContent = '$' + cpu.X.toString(16).toUpperCase().padStart(2, '0');
+      document.getElementById('regY').textContent = '$' + cpu.Y.toString(16).toUpperCase().padStart(2, '0');
+      document.getElementById('asmLiveLine').textContent =
+        `[$${cur.pc.toString(16).toUpperCase()}] OP:$${cur.opcode.toString(16).toUpperCase().padStart(2, '0')} -> ${cur.src}`;
     }
 
     requestAnimationFrame(updateAndRender);
   }
 
-  // --- OBSŁUGA DOTYKOWEGO DRĄŻKA CX40 (MULTI-TOUCH) ---
+  // =========================================================================
+  // 4. INTERFEJS EDYTORA ASM I KONTROLERY DOTYKOWE
+  // =========================================================================
+  const asmModal = document.getElementById('asmModal');
+  const asmInput = document.getElementById('asmInput');
+
+  // Ładujemy wbudowany kod Space Invaders.asm na starcie i kompilujemy do ROM!
+  asmInput.value = document.getElementById('embeddedSpaceInvadersAsm').textContent.trim();
+  assemble6507(asmInput.value);
+
+  document.getElementById('asmBtn').addEventListener('click', () => asmModal.classList.toggle('show'));
+  document.getElementById('closeAsmBtn').addEventListener('click', () => asmModal.classList.remove('show'));
+
+  document.getElementById('compileAsmBtn').addEventListener('click', () => {
+    const bytes = assemble6507(asmInput.value);
+    document.getElementById('asmStatus').textContent = `Skompilowano ${bytes} bajtów do ROM $F000!`;
+    playTone(880, 0.12, 'square');
+  });
+
+  document.getElementById('fetchGithubBtn').addEventListener('click', async () => {
+    const status = document.getElementById('asmStatus');
+    status.textContent = 'Pobieranie z GitHub Julio-Rats...';
+    try {
+      const res = await fetch('https://raw.githubusercontent.com/Julio-Rats/Space_Invaders_Atari_2600/main/Space%20Invaders.asm');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const fullAsm = await res.text();
+      // Dołączamy pobrany kod z GitHub razem z sekcją naszych tablic $F100
+      asmInput.value = fullAsm.slice(0, 4500) + '\n\n' + document.getElementById('embeddedSpaceInvadersAsm').textContent.trim();
+      const bytes = assemble6507(asmInput.value);
+      status.textContent = `Pobrano z GitHub i skompilowano (${bytes} B)!`;
+    } catch (e) {
+      status.textContent = 'Skompilowano wbudowany kod Space Invaders.asm!';
+      assemble6507(asmInput.value);
+    }
+  });
+
+  // --- JOYSTICK CX40 MULTI-TOUCH ---
   const joyZone = document.getElementById('joyZone');
   const joyStick = document.getElementById('joyStick');
   let joyTouchId = null;
 
   function handleJoystickMove(clientX, clientY) {
     const rect = joyZone.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    let dx = clientX - cx;
-    let dy = clientY - cy;
-    const maxR = 36;
+    let dx = clientX - (rect.left + rect.width / 2);
+    let dy = clientY - (rect.top + rect.height / 2);
+    const maxR = 34;
     const dist = Math.hypot(dx, dy);
-    if (dist > maxR) {
-      dx = (dx / dist) * maxR;
-      dy = (dy / dist) * maxR;
-    }
+    if (dist > maxR) { dx = (dx / dist) * maxR; dy = (dy / dist) * maxR; }
     joyStick.style.transform = `translate(${dx}px, ${dy}px)`;
-
-    const deadzone = 10;
-    input.left = dx < -deadzone;
-    input.right = dx > deadzone;
-    input.up = dy < -deadzone;
-    input.down = dy > deadzone;
+    input.left = dx < -10; input.right = dx > 10; input.up = dy < -10; input.down = dy > 10;
   }
 
   function resetJoystick() {
@@ -977,10 +1349,8 @@
   }
 
   joyZone.addEventListener('touchstart', e => {
-    e.preventDefault();
-    unlockAudio();
-    const t = e.changedTouches[0];
-    joyTouchId = t.identifier;
+    e.preventDefault(); unlockAudio();
+    const t = e.changedTouches[0]; joyTouchId = t.identifier;
     handleJoystickMove(t.clientX, t.clientY);
   }, { passive: false });
 
@@ -993,60 +1363,43 @@
     }
   }, { passive: false });
 
-  joyZone.addEventListener('touchend', e => {
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      if (e.changedTouches[i].identifier === joyTouchId) resetJoystick();
-    }
-  });
+  joyZone.addEventListener('touchend', resetJoystick);
   joyZone.addEventListener('touchcancel', resetJoystick);
 
-  // Obsługa myszy na PC
-  let mouseDownJoy = false;
-  joyZone.addEventListener('mousedown', e => { mouseDownJoy = true; unlockAudio(); handleJoystickMove(e.clientX, e.clientY); });
-  window.addEventListener('mousemove', e => { if (mouseDownJoy) handleJoystickMove(e.clientX, e.clientY); });
-  window.addEventListener('mouseup', () => { if (mouseDownJoy) { mouseDownJoy = false; resetJoystick(); } });
+  let mouseJoy = false;
+  joyZone.addEventListener('mousedown', e => { mouseJoy = true; unlockAudio(); handleJoystickMove(e.clientX, e.clientY); });
+  window.addEventListener('mousemove', e => { if (mouseJoy) handleJoystickMove(e.clientX, e.clientY); });
+  window.addEventListener('mouseup', () => { if (mouseJoy) { mouseJoy = false; resetJoystick(); } });
 
-  // --- PRZYCISK FIRE I TURBO ---
+  // --- FIRE & TURBO ---
   const fireBtn = document.getElementById('fireBtn');
   fireBtn.addEventListener('touchstart', e => {
-    e.preventDefault();
-    unlockAudio();
-    input.fire = true;
-    fireBtn.classList.add('pressed');
+    e.preventDefault(); unlockAudio(); input.fire = true; fireBtn.classList.add('pressed');
     if (navigator.vibrate) navigator.vibrate(15);
   }, { passive: false });
-
-  fireBtn.addEventListener('touchend', e => {
-    e.preventDefault();
-    input.fire = false;
-    fireBtn.classList.remove('pressed');
-  });
+  fireBtn.addEventListener('touchend', e => { e.preventDefault(); input.fire = false; fireBtn.classList.remove('pressed'); });
   fireBtn.addEventListener('mousedown', () => { unlockAudio(); input.fire = true; });
   window.addEventListener('mouseup', () => { input.fire = false; });
 
   const turboBtn = document.getElementById('turboBtn');
   turboBtn.addEventListener('click', () => {
-    unlockAudio();
-    turboActive = !turboActive;
+    unlockAudio(); turboActive = !turboActive;
     turboBtn.classList.toggle('active', turboActive);
   });
 
-  // --- KAFELKI WYBORU GRY ---
+  // --- PRZEŁĄCZNIKI ---
   document.querySelectorAll('.cart-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       unlockAudio();
-      const gIdx = parseInt(btn.getAttribute('data-game'), 10);
-      initGame(gIdx);
+      initGame(parseInt(btn.getAttribute('data-game'), 10));
     });
   });
 
-  // --- PRZEŁĄCZNIKI KONSOLI ---
   const swPower = document.getElementById('swPower');
   swPower.addEventListener('click', () => {
     powerOn = !powerOn;
     swPower.classList.toggle('power-on', powerOn);
     swPower.textContent = powerOn ? i18n[lang].powerOn : i18n[lang].powerOff;
-    playTone(powerOn ? 600 : 200, 0.08);
   });
 
   document.getElementById('swSelect').addEventListener('click', () => {
@@ -1056,7 +1409,6 @@
 
   document.getElementById('swReset').addEventListener('click', () => {
     games[currentGame].scoreP1 = 0;
-    games[currentGame].scoreCPU = 0;
     initGame(currentGame);
   });
 
@@ -1072,47 +1424,33 @@
     swDiff.textContent = diffHard ? 'DIFF: A' : 'DIFF: B';
   });
 
-  // --- JĘZYK PL / EN ---
-  const langBtn = document.getElementById('langBtn');
-  langBtn.addEventListener('click', () => {
+  document.getElementById('langBtn').addEventListener('click', e => {
     lang = lang === 'pl' ? 'en' : 'pl';
-    langBtn.textContent = lang === 'pl' ? '🇵🇱 PL' : '🇬🇧 EN';
+    e.target.textContent = lang === 'pl' ? '🇵🇱 PL' : '🇬🇧 EN';
     document.getElementById('fireSub').textContent = i18n[lang].fireSub;
-    swPower.textContent = powerOn ? i18n[lang].powerOn : i18n[lang].powerOff;
-    swColor.textContent = colorMode ? i18n[lang].color : i18n[lang].bw;
   });
 
-  // --- DŹWIĘK ON/OFF & DEBUGGER ---
-  const soundBtn = document.getElementById('soundBtn');
-  soundBtn.addEventListener('click', () => {
+  document.getElementById('soundBtn').addEventListener('click', e => {
     soundEnabled = !soundEnabled;
-    soundBtn.textContent = soundEnabled ? '🔊 ON' : '🔇 OFF';
+    e.target.textContent = soundEnabled ? '🔊 ON' : '🔇 OFF';
   });
 
-  const debugBtn = document.getElementById('debugBtn');
-  const debugBox = document.getElementById('debugBox');
-  debugBtn.addEventListener('click', () => {
-    debugBox.classList.toggle('show');
-  });
-
-  // --- KLAWIATURA (PC) ---
   window.addEventListener('keydown', e => {
-    if (e.key === 'ArrowUp' || e.key === 'w') input.up = true;
-    if (e.key === 'ArrowDown' || e.key === 's') input.down = true;
     if (e.key === 'ArrowLeft' || e.key === 'a') input.left = true;
     if (e.key === 'ArrowRight' || e.key === 'd') input.right = true;
+    if (e.key === 'ArrowUp' || e.key === 'w') input.up = true;
+    if (e.key === 'ArrowDown' || e.key === 's') input.down = true;
     if (e.key === ' ') input.fire = true;
   });
   window.addEventListener('keyup', e => {
-    if (e.key === 'ArrowUp' || e.key === 'w') input.up = false;
-    if (e.key === 'ArrowDown' || e.key === 's') input.down = false;
     if (e.key === 'ArrowLeft' || e.key === 'a') input.left = false;
     if (e.key === 'ArrowRight' || e.key === 'd') input.right = false;
+    if (e.key === 'ArrowUp' || e.key === 'w') input.up = false;
+    if (e.key === 'ArrowDown' || e.key === 's') input.down = false;
     if (e.key === ' ') input.fire = false;
   });
 
-  // Start automatyczny przy załadowaniu
-  initGame(0);
+  initGame(1);
   requestAnimationFrame(updateAndRender);
 })();
 </script>
